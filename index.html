@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Memory AI Game</title>
+
+<style>
+
+body{
+font-family:'Segoe UI';
+background: linear-gradient(135deg,#1e3c72,#2a5298);
+text-align:center;
+color:white;
+}
+
+/* GRID */
+.grid{
+display:grid;
+grid-template-columns:repeat(4,100px);
+gap:15px;
+justify-content:center;
+margin-top:20px;
+}
+
+/* CARD */
+.card{
+width:100px;
+height:100px;
+background:#333;
+border-radius:12px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:40px;
+cursor:pointer;
+transition:0.4s;
+}
+
+.card:hover{transform:scale(1.1);}
+
+.flipped{
+background:white;
+color:black;
+}
+
+/* SCOREBOARD */
+#scoreboard{
+background:rgba(255,255,255,0.15);
+padding:12px;
+border-radius:12px;
+display:inline-block;
+margin-top:10px;
+font-size:18px;
+}
+
+/* BUTTON */
+button{
+margin-top:10px;
+padding:10px 20px;
+border:none;
+border-radius:6px;
+background:#4CAF50;
+color:white;
+cursor:pointer;
+}
+
+/* 🔥 TOP POPUP */
+#popup{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%) scale(0.8);
+background:linear-gradient(135deg,#ff512f,#dd2476);
+padding:15px 40px;
+border-radius:30px;
+font-size:28px;
+font-weight:bold;
+color:white;
+display:none;
+z-index:1000;
+text-shadow:2px 2px 10px rgba(0,0,0,0.5);
+box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* SLIDE ANIMATION */
+@keyframes slideDown{
+0%{transform:translate(-50%,-50px) scale(0.8); opacity:0;}
+100%{transform:translate(-50%,0) scale(1); opacity:1;}
+}
+
+/* CONFETTI */
+.confetti{
+position:fixed;
+width:10px;
+height:10px;
+top:0;
+animation:fall linear infinite;
+}
+
+@keyframes fall{
+0%{transform:translateY(-10px) rotate(0deg);}
+100%{transform:translateY(100vh) rotate(360deg);}
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>🎴 Memory Game (Player vs AI)</h2>
+
+<div id="scoreboard">
+Turn: <b id="turn">Player</b> |
+Player: <b id="p">0</b> |
+AI: <b id="ai">0</b>
+</div>
+
+<br>
+
+<button onclick="restart()">🔄 Restart</button>
+
+<div class="grid" id="game"></div>
+
+<div id="popup"></div>
+
+<script>
+
+// DATA
+let items = ["🍎","🍎","🚗","🚗","🐶","🐶","⚽","⚽",
+             "🎵","🎵","🌟","🌟","🍕","🍕","📱","📱"]
+
+items.sort(()=>Math.random()-0.5)
+
+let revealed=[]
+let matched=[]
+let turn="player"
+
+let playerScore=0
+let aiScore=0
+
+// POPUP FUNCTION
+function showPopup(text){
+
+let p=document.getElementById("popup")
+p.innerText=text
+p.style.display="block"
+
+// slide animation
+p.style.animation="none"
+setTimeout(()=>{p.style.animation="slideDown 0.5s forwards"},10)
+
+// 🎊 Confetti only for winner
+if(text.includes("WIN")){
+
+for(let i=0;i<60;i++){
+
+let conf=document.createElement("div")
+conf.className="confetti"
+
+conf.style.left=Math.random()*100+"vw"
+conf.style.background=`hsl(${Math.random()*360},100%,50%)`
+conf.style.animationDuration=(2+Math.random()*2)+"s"
+
+document.body.appendChild(conf)
+
+setTimeout(()=>conf.remove(),3000)
+
+}
+
+}
+
+setTimeout(()=>{p.style.display="none"},1200)
+
+}
+
+// DRAW
+function draw(){
+
+let g=document.getElementById("game")
+g.innerHTML=""
+
+items.forEach((v,i)=>{
+
+let c=document.createElement("div")
+c.className="card"
+
+if(revealed.includes(i) || matched.includes(i)){
+c.classList.add("flipped")
+c.innerHTML=v
+}else{
+c.innerHTML="?"
+}
+
+c.onclick=()=>playerMove(i)
+
+g.appendChild(c)
+
+})
+
+}
+
+// PLAYER MOVE
+function playerMove(i){
+
+if(turn!="player" || revealed.includes(i) || matched.includes(i)) return
+
+revealed.push(i)
+draw()
+
+if(revealed.length==2){
+
+let [a,b]=revealed
+
+if(items[a]==items[b]){
+
+matched.push(a,b)
+playerScore++
+document.getElementById("p").innerText=playerScore
+revealed=[]
+
+if(checkGame()) return
+
+}else{
+
+setTimeout(()=>{
+revealed=[]
+turn="ai"
+document.getElementById("turn").innerText="AI"
+showPopup("🤖 AI TURN")
+draw()
+aiMove()
+},800)
+
+}
+
+}
+
+}
+
+// AI MOVE
+function aiMove(){
+
+setTimeout(()=>{
+
+let choices = items.map((v,i)=>i).filter(i=>!matched.includes(i))
+
+let i1 = choices[Math.floor(Math.random()*choices.length)]
+let i2 = choices[Math.floor(Math.random()*choices.length)]
+
+while(i1==i2){
+i2 = choices[Math.floor(Math.random()*choices.length)]
+}
+
+revealed=[i1,i2]
+draw()
+
+setTimeout(()=>{
+
+if(items[i1]==items[i2]){
+
+matched.push(i1,i2)
+aiScore++
+document.getElementById("ai").innerText=aiScore
+revealed=[]
+
+if(checkGame()) return
+
+aiMove()
+
+}else{
+
+revealed=[]
+turn="player"
+document.getElementById("turn").innerText="Player"
+showPopup("👤 YOUR TURN")
+
+}
+
+draw()
+
+},800)
+
+},800)
+
+}
+
+// CHECK GAME
+function checkGame(){
+
+if(matched.length===items.length){
+
+let msg=""
+
+if(playerScore>aiScore) msg="🎉 YOU WIN!!! 🎉"
+else if(aiScore>playerScore) msg="🤖 AI WINS!!! 🤖"
+else msg="🤝 DRAW!"
+
+showPopup(msg)
+return true
+}
+
+return false
+
+}
+
+// RESTART
+function restart(){
+location.reload()
+}
+
+// START
+showPopup("👤 YOUR TURN")
+draw()
+
+</script>
+
+</body>
+</html>
